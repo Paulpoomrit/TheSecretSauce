@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# for all contents in 0_Static folder -> handle by git lfs
+Content/0_Static/** filter=lfs diff=lfs merge=lfs -text
