@@ -11,8 +11,6 @@ UGrabber::UGrabber()
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
-
-	// ...
 }
 
 
@@ -20,9 +18,15 @@ UGrabber::UGrabber()
 void UGrabber::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// ...
-	
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+	if (PhysicsHandle != nullptr)
+	{
+		UE_LOG(LogTemp, Display, TEXT("Physics Handle Detected: %s"), *PhysicsHandle->GetName());		
+	}
+	else
+	{
+		UE_LOG(LogTemp, Display, TEXT("No Physics Handle Detected"));
+	}
 }
 
 
@@ -30,26 +34,81 @@ void UGrabber::BeginPlay()
 void UGrabber::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	const FVector Start = GetComponentLocation();
-	const FVector End = Start + GetForwardVector() * this->MaxGrabDistance;
-	DrawDebugLine(GetWorld(), Start, End, FColor::Red, true);
-
-	float Damage;
-	if (HasDamage(Damage))
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+	if (PhysicsHandle == nullptr)
 	{
-		PrintDamage(Damage);
+		return;
+	}
+	FVector TargetLocation = GetComponentLocation() + GetForwardVector() * HoldDistance;
+	PhysicsHandle->SetTargetLocationAndRotation(TargetLocation, GetComponentRotation());
+}
+
+void UGrabber::Release()
+{
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+	if (PhysicsHandle == nullptr)
+	{
+		return;
+	}
+	UPrimitiveComponent* GrabbedResult = PhysicsHandle->GetGrabbedComponent();
+	if (GrabbedResult != nullptr)
+	{
+		GrabbedResult->WakeAllRigidBodies();
+		PhysicsHandle->ReleaseComponent();
 	}
 }
 
-void UGrabber::PrintDamage(const float& Damage) // Damage -> pass by ref (const)
+void UGrabber::Grab()
 {
-	UE_LOG(LogTemp, Display, TEXT("Damage: %f"), Damage);
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+	FHitResult HitResult;
+	bool HasHit = GetGrabbableInReach(HitResult);
+	if (HasHit)
+	{
+		UPrimitiveComponent* HitComponent = HitResult.GetComponent();
+		HitComponent->WakeAllRigidBodies();
+		PhysicsHandle->GrabComponentAtLocationWithRotation(
+			HitComponent,
+			NAME_None,
+			HitResult.ImpactPoint,
+			this->GetComponentRotation()
+		);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Display, TEXT("No Hit"));
+	}
 }
 
-bool UGrabber::HasDamage(float& OutDamage) // OutDamage -> not const -> is considered outParameter
+UPhysicsHandleComponent* UGrabber::GetPhysicsHandle() const
 {
-	OutDamage = 10;
-	return true;
+	UPhysicsHandleComponent* Result = GetOwner()->FindComponentByClass<UPhysicsHandleComponent>();
+	if (Result == nullptr)
+	{
+		UE_LOG(LogTemp, Error, TEXT("GetPhysicsHandle returned nullptr. Grabber requires a UPhysicsHandleComponent"));
+	}
+	return Result;
 }
 
+bool UGrabber::GetGrabbableInReach(FHitResult& OutHitResult) const
+{
+	UPhysicsHandleComponent* PhysicsHandle = GetPhysicsHandle();
+	if (PhysicsHandle == nullptr)
+	{
+		return false;
+	}
+	
+	const FVector Start = GetComponentLocation();
+	const FVector End = Start + GetForwardVector() * this->MaxGrabDistance;
+	DrawDebugLine(GetWorld(), Start, End, FColor::Red, true);
+	DrawDebugSphere(GetWorld(), End, 10, 10, FColor::Blue, false, 5);
+
+	FCollisionShape Sphere = FCollisionShape::MakeSphere(GrabRadius);
+	bool HasHit = GetWorld()->SweepSingleByChannel(
+					OutHitResult,
+					Start, End,
+					FQuat::Identity,
+					ECC_GameTraceChannel2,
+					Sphere);
+	return HasHit;
+}
