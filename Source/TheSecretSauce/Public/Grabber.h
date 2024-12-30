@@ -26,10 +26,10 @@ public:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 	UFUNCTION(BlueprintCallable)
-	void Release();
+	bool Release();
 
 	UFUNCTION(BlueprintCallable)
-	void Grab();
+	bool Grab();
 
 	
 private:
