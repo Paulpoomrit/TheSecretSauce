@@ -15,8 +15,14 @@ class THESECRETSAUCE_API UTriggerComponent : public UBoxComponent
 	GENERATED_BODY()
 public:
 	UTriggerComponent();
+	// Called every frame
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FName TriggerName;
+	
 protected:
 	virtual void BeginPlay() override;
+	
 	
 };

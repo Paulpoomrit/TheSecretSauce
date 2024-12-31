@@ -10,8 +10,25 @@ UTriggerComponent::UTriggerComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
+void UTriggerComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+	FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	TArray<AActor*> OverlappingActors;
+	GetOverlappingActors(OverlappingActors);
+	if (OverlappingActors.Num() > 0)
+	{
+		for (AActor* OverlappingActor : OverlappingActors)
+		{
+			if (OverlappingActor->ActorHasTag(TriggerName))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("%s"), *OverlappingActor->GetName());
+			}
+		}
+	}
+}
+
 void UTriggerComponent::BeginPlay()
 {
 	Super::BeginPlay();
-	UE_LOG(LogTemp, Warning, TEXT("Trigger Component!"));
 }
